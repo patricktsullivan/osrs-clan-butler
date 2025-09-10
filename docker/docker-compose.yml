@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  osrs-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: osrs-discord-bot
+    restart: unless-stopped
+    
+    # Environment variables
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - LOG_FILE=/app/logs/osrs_bot.log
+    
+    # Load environment variables from file
+    env_file:
+      - .env
+    
+    # Volume mounts for persistent data
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+      - ./config:/app/config
+    
+    # Network configuration
+    networks:
+      - bot-network
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os; exit(0 if os.path.exists(\"/app/logs/osrs_bot.log\") else 1)'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Log aggregation service
+  # logspout:
+  #   image: gliderlabs/logspout:latest
+  #   container_name: osrs-bot-logs
+  #   restart: unless-stopped
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   command: syslog://logs.example.com:514
+  #   networks:
+  #     - bot-network
+  #   depends_on:
+  #     - osrs-bot
+
+networks:
+  bot-network:
+    driver: bridge
+
+# Optional: Volume definitions for external storage
+# volumes:
+#   bot-data:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       o: bind
+#       device: /opt/osrs-bot/data
